@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linear Algebra for AI 11 &mdash; Transformer Block Anatomy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]})"></script>
+    <style>
+        :root { --bg-primary: #0a0a0a; --bg-card: #0d1117; --bg-code: #161b22; --text-primary: #e6edf3; --text-secondary: #8b949e; --accent: #a78bfa; --accent-dim: #a78bfa44; --accent-glow: #a78bfa33; --accent-2: #f472b6; --accent-3: #fbbf24; --accent-4: #34d399; --border: #21262d; --font-display: 'Space Grotesk', sans-serif; --font-mono: 'JetBrains Mono', 'Fira Code', monospace; --font-body: 'Inter', sans-serif; --max-width: 920px; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body { background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-body); font-size: 17px; line-height: 1.7; overflow-x: hidden; }
+        .hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem 1.5rem; text-align: center; position: relative; }
+        .hero::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 700px; height: 600px; background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%); pointer-events: none; z-index: 0; }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label { font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 1rem; }
+        .hero h1 { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700; color: var(--text-primary); line-height: 1.2; margin-bottom: 1rem; }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle { font-size: 1.1rem; color: var(--text-secondary); max-width: 640px; margin-bottom: 2rem; }
+        .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-bottom: 2.5rem; }
+        .tag { font-family: var(--font-mono); font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); background: var(--accent-dim); white-space: nowrap; }
+        .pipeline { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.25rem; margin-bottom: 1rem; max-width: var(--max-width); }
+        .pipeline-step { font-family: var(--font-mono); font-size: 0.7rem; padding: 0.3rem 0.7rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-secondary); white-space: nowrap; }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide { min-height: 100vh; max-width: var(--max-width); margin: 0 auto; padding: 4rem 1.5rem; position: relative; display: flex; flex-direction: column; justify-content: center; }
+        .slide-number { font-family: var(--font-display); font-size: 5rem; font-weight: 700; color: var(--accent-dim); position: absolute; top: 2rem; right: 1.5rem; line-height: 1; user-select: none; }
+        .slide h2 { font-family: var(--font-display); font-size: 1.9rem; font-weight: 700; color: var(--accent); margin-bottom: 1.5rem; line-height: 1.25; }
+        .slide h3 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; color: var(--text-primary); margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code { background: var(--bg-code); padding: 0.1rem 0.35rem; border-radius: 3px; font-family: var(--font-mono); font-size: 0.85em; color: var(--accent); }
+        .table-wrap { overflow-x: auto; margin: 1.25rem 0; border-radius: 8px; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { background: var(--bg-code); color: var(--accent); font-weight: 600; text-align: left; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-family: var(--font-display); white-space: nowrap; }
+        td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); color: var(--text-secondary); vertical-align: top; }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-grid { display: grid; gap: 0.75rem; margin: 1.5rem 0; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel { padding: 1rem; background: var(--bg-code); border: 1px solid var(--border); border-radius: 6px; }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel.r { border-left: 3px solid var(--accent-2); }
+        .diagram-panel.y { border-left: 3px solid var(--accent-3); }
+        .diagram-panel.g { border-left: 3px solid var(--accent-4); }
+        .diagram-panel h4 { font-family: var(--font-display); font-size: 1rem; color: var(--accent); margin-bottom: 0.5rem; }
+        .diagram-panel.r h4 { color: var(--accent-2); } .diagram-panel.y h4 { color: var(--accent-3); } .diagram-panel.g h4 { color: var(--accent-4); }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.9rem; }
+        .callout { background: var(--bg-card); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+        .callout p { margin-bottom: 0; }
+        .callout .callout-label { font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+        .canvas-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: 1.25rem 0; overflow-x: auto; }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .control-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin: 1.25rem 0; }
+        .control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+        .control-row label { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary); min-width: 130px; }
+        .btn { font-family: var(--font-mono); font-size: 0.8rem; padding: 0.4rem 0.9rem; background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; cursor: pointer; transition: background 0.15s ease; }
+        .btn:hover { background: rgba(167,139,250,0.25); }
+        .btn.secondary { background: var(--bg-code); color: var(--text-secondary); border-color: var(--border); }
+        .control-row .val { font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); min-width: 80px; text-align: right; }
+        .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.5rem; margin-top: 0.75rem; }
+        .metric { background: var(--bg-code); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem; text-align: center; }
+        .metric .metric-label { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; }
+        .metric .metric-value { font-family: var(--font-display); font-size: 1.05rem; color: var(--accent); font-weight: 600; margin-top: 0.2rem; }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li { counter-increment: contents; padding: 0.6rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before { content: counter(contents, decimal-leading-zero); font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); min-width: 2rem; }
+        .contents-list a { color: var(--text-primary); text-decoration: none; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer { text-align: center; padding: 3rem 1.5rem; color: var(--text-secondary); font-size: 0.85rem; border-top: 1px solid var(--border); max-width: var(--max-width); margin: 0 auto; }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .katex { color: var(--text-primary); } .katex-display { margin: 1rem 0; overflow-x: auto; overflow-y: hidden; }
+        pre.code { background: var(--bg-code); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-primary); overflow-x: auto; line-height: 1.5; margin: 1rem 0; }
+        pre.code .kw { color: var(--accent); }
+        pre.code .cm { color: var(--text-secondary); }
+        pre.code .sh { color: var(--accent-3); }
+        @media (max-width: 640px) { .slide { padding: 3rem 1rem; min-height: auto; } .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; } .slide h2 { font-size: 1.5rem; } .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; } .hero h1 { font-size: 1.8rem; } table { font-size: 0.78rem; } }
+    </style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="series-label">Linear Algebra for AI &mdash; Presentation 11</div>
+    <h1>Transformer <span class="accent">Block Anatomy</span></h1>
+    <p class="subtitle">Walk a tensor through a full pre-norm transformer block. Pre-norm, multi-head attention with all four projections, residual, FFN with up-then-down, residual. Every shape, every matmul, every parameter.</p>
+
+    <div class="tags">
+        <span class="tag">pre-norm</span><span class="tag">RMSNorm</span>
+        <span class="tag">QKV+O</span><span class="tag">FFN</span>
+        <span class="tag">SwiGLU</span><span class="tag">residual stream</span>
+    </div>
+
+    <div class="pipeline">
+        <span class="pipeline-step">x</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">norm</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">MHA</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">+</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">norm</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">FFN</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">+</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">x'</span>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Topics We'll Cover</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">The Pre-Norm Block in One Equation</a></li>
+        <li><a href="#slide-02">The Residual Stream as a Linear Bus</a></li>
+        <li><a href="#slide-03">LayerNorm vs RMSNorm &mdash; the Geometry</a></li>
+        <li><a href="#slide-04">Walking the Tensor &mdash; Shapes &amp; Matmuls</a></li>
+        <li><a href="#slide-05">Parameter Budget per Block</a></li>
+        <li><a href="#slide-06">FLOP Budget per Token, per Block</a></li>
+        <li><a href="#slide-07">Attention vs FFN &mdash; Where the Compute Lives</a></li>
+        <li><a href="#slide-08">Reference PyTorch Implementation</a></li>
+        <li><a href="#slide-09">Variants &mdash; Pre/Post Norm, GeLU/SwiGLU, Bias-Free</a></li>
+        <li><a href="#slide-10">Cheat Sheet</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>The Pre-Norm Block in One Equation</h2>
+    <p>Modern transformers (Llama, Mistral, Qwen, GPT-3+) use the <strong>pre-norm</strong> block:</p>
+
+    <p>$$\mathbf{x}' = \mathbf{x} + \mathrm{MHA}(\mathrm{Norm}(\mathbf{x})),$$</p>
+    <p>$$\mathbf{x}'' = \mathbf{x}' + \mathrm{FFN}(\mathrm{Norm}(\mathbf{x}')).$$</p>
+
+    <p>Two sub-layers, each with its own normalisation, sub-layer function and residual connection. The output of the block goes into the next block's input.</p>
+
+    <h3>Three properties of this layout</h3>
+    <ul>
+        <li><strong>Identity start.</strong> If MHA and FFN are zero, $\mathbf{x}'' = \mathbf{x}$. The block defaults to pass-through; learning happens by the sub-layers learning <em>corrections</em>.</li>
+        <li><strong>Residual stream is unchanged at the boundaries.</strong> No norm is applied to the additive residual; only to its <em>copy</em> sent into the sub-layer. The "main bus" preserves its scale layer to layer.</li>
+        <li><strong>Gradient highway.</strong> The Jacobian of one block is $I + J_{\mathrm{MHA}} + J_{\mathrm{FFN}}$ (to leading order). Stack 80 of them and gradient flow stays well-conditioned (deck 09).</li>
+    </ul>
+
+    <div class="callout">
+        <div class="callout-label">Pre-norm vs post-norm</div>
+        <p>The original transformer (Vaswani 2017) used post-norm: $\mathbf{x}' = \mathrm{Norm}(\mathbf{x} + \mathrm{MHA}(\mathbf{x}))$. This requires careful warmup to train stably past ~12 layers. Pre-norm (Xiong et al., ICML 2020) trains stably to 100+ layers without warmup tricks. Modern models are universally pre-norm; we focus on it here.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>The Residual Stream as a Linear Bus</h2>
+    <p>The residual stream $\mathbf{x} \in \mathbb{R}^{d_{model}}$ is the bus that runs through every block. Each sub-layer reads from it (after norm) and writes back via the residual add.</p>
+
+    <p>Linear-algebraically: at the end of layer $L$, the residual stream is</p>
+    <p>$$\mathbf{x}^{(L)} = \mathbf{x}^{(0)} + \sum_{\ell=1}^L \big[\mathrm{MHA}^{(\ell)}(\cdots) + \mathrm{FFN}^{(\ell)}(\cdots)\big] = \mathbf{x}^{(0)} + \sum_\ell \Delta_\ell.$$</p>
+
+    <p>The residual stream is a sum: the embedding plus all the contributions written by every sub-layer.</p>
+
+    <h3>What this implies</h3>
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border">
+            <h4>Shared coordinate system</h4>
+            <p>Every layer reads and writes in the same $d_{model}$-dim space. Directions in this space have meaning that persists across layers; mechanistic interpretability builds on this.</p>
+        </div>
+        <div class="diagram-panel y">
+            <h4>Bandwidth budget</h4>
+            <p>Each sub-layer can write $\le d_{model}$ independent dimensions per pass. The residual stream is linearly $d_{model}$-dimensional, but with superposition (deck 01) carries vastly more meaningful directions.</p>
+        </div>
+        <div class="diagram-panel g">
+            <h4>Decomposability</h4>
+            <p>Reading "what does layer 5 contribute to the final logits?" is a linear question: project $\mathrm{MHA}^{(5)}(\cdots) + \mathrm{FFN}^{(5)}(\cdots)$ onto the unembedding directions. Logit lens, tuned lens, and direct logit attribution all rely on this.</p>
+        </div>
+    </div>
+
+    <div class="callout">
+        <div class="callout-label">"Mathematical Framework" (Anthropic 2021)</div>
+        <p>Elhage et al. introduced the residual-stream picture as the right way to read transformers: every component reads a linear projection of the stream and writes another linear contribution back. Non-linearities (softmax, SwiGLU) are <em>local</em> to each sub-layer; the inter-layer story is purely additive. This abstraction is what makes circuit-level interpretation tractable.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>LayerNorm vs RMSNorm &mdash; the Geometry</h2>
+    <p><strong>LayerNorm</strong> (Ba 2016): subtract per-token mean, divide by per-token standard deviation, scale and shift:</p>
+    <p>$$\mathrm{LN}(\mathbf{x}) = \mathbf{g} \odot \frac{\mathbf{x} - \mu(\mathbf{x})}{\sqrt{\sigma^2(\mathbf{x}) + \varepsilon}} + \mathbf{b}.$$</p>
+
+    <p><strong>RMSNorm</strong> (Zhang &amp; Sennrich 2019): just divide by the per-token RMS:</p>
+    <p>$$\mathrm{RMS}(\mathbf{x}) = \mathbf{g} \odot \frac{\mathbf{x}}{\sqrt{\frac{1}{d}\sum_i x_i^2 + \varepsilon}}.$$</p>
+
+    <p>RMSNorm is a strict simplification: drop the centering, drop the bias. Almost all modern LLMs (Llama, Mistral, Qwen, DeepSeek, Gemma) use RMSNorm.</p>
+
+    <h3>The geometric reading</h3>
+    <p>Both normalisations are non-linear, but they have a geometric interpretation. For RMSNorm with $\mathbf{g} = \mathbf{1}, \mathbf{b} = 0$:</p>
+    <p>$$\mathrm{RMS}(\mathbf{x}) = \sqrt{d}\, \frac{\mathbf{x}}{\|\mathbf{x}\|_2}.$$</p>
+    <p>RMSNorm <strong>projects $\mathbf{x}$ onto the sphere of radius $\sqrt{d}$</strong>. Direction is preserved; magnitude is fixed. The learnable gain $\mathbf{g}$ then per-axis stretches the result.</p>
+
+    <p>For LayerNorm: project onto the affine hyperplane $\sum_i x_i = 0$ (zero mean), then onto the sphere of radius $\sqrt{d}$ in that hyperplane. Same idea with one extra constraint.</p>
+
+    <div class="callout">
+        <div class="callout-label">Why drop the centering</div>
+        <p>For activations with roughly zero mean &mdash; which residual streams already are by training dynamics &mdash; the mean subtraction is a no-op. Removing it saves one reduction per token and makes the gradient simpler. Empirically: RMSNorm matches LayerNorm in quality at lower compute. The simplification has stuck.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>Walking the Tensor &mdash; Shapes &amp; Matmuls</h2>
+    <p>Take $d_{model} = 4096$, $H = 32$, $d_h = 128$, $d_{ff} = 11008$ (Llama-2 7B per-block). Walk a single token through.</p>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Step</th><th>Operation</th><th>Shape after</th><th>FLOPs (per token)</th></tr></thead>
+            <tbody>
+                <tr><td>0</td><td>Input <code>x</code></td><td>(4096,)</td><td>&mdash;</td></tr>
+                <tr><td>1</td><td><code>x_norm = RMSNorm(x)</code></td><td>(4096,)</td><td>~$4d$ (negligible)</td></tr>
+                <tr><td>2</td><td><code>q = W_Q · x_norm</code> (32 heads concatenated)</td><td>(4096,)</td><td>$2d^2 = 33.5$M</td></tr>
+                <tr><td>3</td><td><code>k = W_K · x_norm</code></td><td>(4096,)</td><td>$2d^2 = 33.5$M</td></tr>
+                <tr><td>4</td><td><code>v = W_V · x_norm</code></td><td>(4096,)</td><td>$2d^2 = 33.5$M</td></tr>
+                <tr><td>5</td><td>Reshape <code>q, k, v</code> to (32, 128); apply RoPE to <code>q, k</code></td><td>(32, 128) ×3</td><td>~$4d$ (rotation)</td></tr>
+                <tr><td>6</td><td>For each of 32 heads: <code>S = q · K_cache_h · √(1/128)</code></td><td>(32, L) per head</td><td>$2 d L$</td></tr>
+                <tr><td>7</td><td><code>A = softmax(S)</code> rowwise</td><td>(32, L)</td><td>~$3HL$ (negligible)</td></tr>
+                <tr><td>8</td><td><code>O_h = A · V_cache_h</code> per head</td><td>(32, 128)</td><td>$2 d L$</td></tr>
+                <tr><td>9</td><td>Concat heads &rarr; (4096,); <code>attn_out = W_O · concat</code></td><td>(4096,)</td><td>$2d^2 = 33.5$M</td></tr>
+                <tr><td>10</td><td><strong>Residual add: <code>x1 = x + attn_out</code></strong></td><td>(4096,)</td><td>$d$ adds</td></tr>
+                <tr><td>11</td><td><code>x1_norm = RMSNorm(x1)</code></td><td>(4096,)</td><td>~$4d$</td></tr>
+                <tr><td>12</td><td><code>gate = W_gate · x1_norm</code></td><td>(11008,)</td><td>$2 d \cdot d_{ff} = 90.2$M</td></tr>
+                <tr><td>13</td><td><code>up   = W_up · x1_norm</code></td><td>(11008,)</td><td>$2 d \cdot d_{ff} = 90.2$M</td></tr>
+                <tr><td>14</td><td><code>h = SiLU(gate) · up</code> (elementwise)</td><td>(11008,)</td><td>$3 d_{ff}$ (elem)</td></tr>
+                <tr><td>15</td><td><code>ffn_out = W_down · h</code></td><td>(4096,)</td><td>$2 d \cdot d_{ff} = 90.2$M</td></tr>
+                <tr><td>16</td><td><strong>Residual add: <code>x2 = x1 + ffn_out</code></strong></td><td>(4096,)</td><td>$d$ adds</td></tr>
+                <tr><td>17</td><td>Output <code>x2</code> &rarr; next block</td><td>(4096,)</td><td>&mdash;</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <p>Per-token, per-block FLOPs (excluding $L$-dependent attention scoring): $4 \cdot 2d^2 + 3 \cdot 2 d \cdot d_{ff} \approx 4 \cdot 33.5\mathrm{M} + 3 \cdot 90\mathrm{M} \approx 404\mathrm{M}$. The $L$-dependent attention adds $4 d L = 16k \cdot L$ FLOPs on top &mdash; significant for long contexts.</p>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>Parameter Budget per Block</h2>
+    <p>Counting parameters in a single Llama-style block ($d_{model} = d$, $d_{ff} = 8d/3$ for SwiGLU at the same effective ratio):</p>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Component</th><th>Shape</th><th>Params</th><th>For $d=4096$</th></tr></thead>
+            <tbody>
+                <tr><td>$W_Q$</td><td>$d \times d$</td><td>$d^2$</td><td>16.8 M</td></tr>
+                <tr><td>$W_K$</td><td>$d \times d_{kv}$</td><td>$d \cdot d_{kv}$</td><td>16.8 M (MHA)</td></tr>
+                <tr><td>$W_V$</td><td>$d \times d_{kv}$</td><td>$d \cdot d_{kv}$</td><td>16.8 M (MHA)</td></tr>
+                <tr><td>$W_O$</td><td>$d \times d$</td><td>$d^2$</td><td>16.8 M</td></tr>
+                <tr><td>$W_{\text{gate}}$</td><td>$d \times d_{ff}$</td><td>$d \cdot d_{ff}$</td><td>45.1 M (at $d_{ff}\approx 11k$)</td></tr>
+                <tr><td>$W_{\text{up}}$</td><td>$d \times d_{ff}$</td><td>$d \cdot d_{ff}$</td><td>45.1 M</td></tr>
+                <tr><td>$W_{\text{down}}$</td><td>$d_{ff} \times d$</td><td>$d \cdot d_{ff}$</td><td>45.1 M</td></tr>
+                <tr><td>2× RMSNorm gain</td><td>$d$ each</td><td>$2d$</td><td>8 K (negligible)</td></tr>
+                <tr><td><strong>Total per block</strong></td><td>&mdash;</td><td>$4d^2 + 3 d\, d_{ff}$</td><td><strong>~202 M</strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Where the parameters live</h3>
+    <ul>
+        <li>QKVO matrices: $4 d^2 \approx 67$ M.</li>
+        <li>FFN (3 matrices): $3 d \cdot d_{ff} \approx 135$ M with SwiGLU at $d_{ff} = 8d/3$.</li>
+        <li>FFN is ~$2\times$ the size of attention. This is true at every modern model size.</li>
+    </ul>
+
+    <p>For Llama-2 7B with 32 blocks: $32 \times 202\mathrm{M} \approx 6.5$ B parameters from blocks alone, plus embedding + unembedding ($\sim 0.5$ B). Total matches the published 6.7 B figure.</p>
+
+    <p>For Llama-3 70B with GQA ($d_{kv} = d/8$): per-block QKVO becomes $d^2 + 2 d \cdot d/8 + d^2 = 2.25 d^2$ instead of $4d^2$ &mdash; nearly half off the attention parameter count. FFN remains the same. The GQA savings show up in both KV cache (deck 10) <em>and</em> static parameters.</p>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>FLOP Budget per Token, per Block</h2>
+    <p>Each weight matrix used in a forward pass costs $2 \times \text{params}$ FLOPs per token (one multiply + one add per param). For our $d = 4096, d_{ff} = 11008$ block:</p>
+
+    <ul>
+        <li><strong>QKVO matmul:</strong> $4 \cdot 2 d^2 = 134$ MFLOPs/token</li>
+        <li><strong>Attention scoring, $L = 4096$:</strong> $4 d_h \cdot H \cdot L = 4 \cdot 4096 \cdot 4096 = 67$ MFLOPs/token (the $QK^\top$ + $A V$ per head, summed over heads)</li>
+        <li><strong>FFN matmuls:</strong> $3 \cdot 2 d \cdot d_{ff} = 270$ MFLOPs/token</li>
+        <li><strong>Norms, activations, RoPE:</strong> ~10 MFLOPs/token (small)</li>
+        <li><strong>Total per block:</strong> ~480 MFLOPs/token</li>
+    </ul>
+
+    <p>For 32 blocks, that's ~15 GFLOPs/token. On a H100 at ~990 TF/s FP16 we'd expect ~66k tokens/sec at 100% utilisation; real throughput is lower because of memory bandwidth and cache effects on attention scoring.</p>
+
+    <h3>The 6N rule</h3>
+    <p>For a model with $N$ parameters, training one token costs ~$6N$ FLOPs (Hoffmann et al., Chinchilla 2022): one forward (~$2N$) plus a backward that's twice the forward (~$4N$). This is a back-of-envelope for any dense decoder LLM, and falls directly out of the "3&times; for backward" rule (deck 09) plus the parameter count above.</p>
+
+    <div class="callout">
+        <div class="callout-label">When attention scoring dominates</div>
+        <p>For short context ($L \ll d$), per-token FLOPs are dominated by static-parameter matmuls (~480 M). For long context ($L \sim 32k$), attention scoring becomes $4 d L \approx 0.5$ G per token, comparable to the FFN. <strong>This is what makes long-context attention expensive.</strong> FlashAttention (deck 12) and MLA (deck 07) tackle the memory-bandwidth side of the same problem.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>Attention vs FFN &mdash; Where the Compute Lives</h2>
+    <p>Stepping back to the empirical splits per block:</p>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Attention sub-layer</h4>
+            <ul>
+                <li>Static params: $\sim 4 d^2$ (MHA) or $\sim 2.25 d^2$ (GQA).</li>
+                <li>Per-token matmul FLOPs: $2 \times$ static params.</li>
+                <li>Plus $L$-dependent attention: $4 d L$ FLOPs/token. KV-cache memory: $2 d L$ floats per layer (MHA), ~8&times; less with GQA.</li>
+                <li><strong>Role:</strong> token-to-token routing; copying/induction/name-binding circuits live here.</li>
+            </ul>
+        </div>
+        <div class="diagram-panel y">
+            <h4>FFN sub-layer</h4>
+            <ul>
+                <li>Static params: $\sim 3 d \cdot d_{ff} \approx 8 d^2$ (SwiGLU at ratio $8d/3$).</li>
+                <li>Per-token FLOPs: $2 \times$ static params $\approx 16 d^2$.</li>
+                <li>No $L$-dependent term. KV cache: zero.</li>
+                <li><strong>Role:</strong> per-token "memory" / pattern bank; mechanistic-interpretability work argues each hidden neuron is a (key, value) pair.</li>
+            </ul>
+        </div>
+    </div>
+
+    <h3>The empirical split</h3>
+    <p>For Llama-2 7B: ~33% of params and FLOPs in attention QKVO, ~67% in FFN. For Llama-3 70B with GQA: the split tilts further toward FFN (~25% / 75%). MoE models like DeepSeek-V3 have huge FFN-MoE blocks &mdash; the ratio goes nearly all-FFN, but only the $k$ activated experts contribute per token.</p>
+
+    <p>What this tells us about transformers as a structure: <strong>most of the computation is per-token feature processing (FFN); the inter-token communication channel (attention) is comparatively narrow and grows only sub-linearly with model size</strong>. In an information-flow picture, attention is the network's bandwidth between positions; FFN is the bandwidth into the parameter store at each position.</p>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>Reference PyTorch Implementation</h2>
+    <p>A minimal, correct decoder block in ~40 lines. This is essentially the structure inside Llama, Mistral, Qwen and most modern LLMs.</p>
+
+<pre class="code"><span class="cm"># Pre-norm decoder block, RMSNorm + GQA + RoPE + SwiGLU</span>
+<span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn.functional <span class="kw">as</span> F
+<span class="kw">from</span> torch <span class="kw">import</span> nn
+
+<span class="kw">class</span> RMSNorm(nn.Module):
+    <span class="kw">def</span> __init__(self, d, eps=1e-6):
+        super().__init__()
+        self.g = nn.Parameter(torch.ones(d))
+        self.eps = eps
+    <span class="kw">def</span> forward(self, x):
+        rms = x.pow(2).mean(-1, keepdim=True).add(self.eps).rsqrt()
+        <span class="kw">return</span> x * rms * self.g
+
+<span class="kw">class</span> SwiGLUFFN(nn.Module):
+    <span class="kw">def</span> __init__(self, d, d_ff):
+        super().__init__()
+        self.w_gate = nn.Linear(d, d_ff, bias=<span class="sh">False</span>)
+        self.w_up   = nn.Linear(d, d_ff, bias=<span class="sh">False</span>)
+        self.w_down = nn.Linear(d_ff, d, bias=<span class="sh">False</span>)
+    <span class="kw">def</span> forward(self, x):
+        <span class="kw">return</span> self.w_down(F.silu(self.w_gate(x)) * self.w_up(x))
+
+<span class="kw">class</span> GQAAttention(nn.Module):
+    <span class="kw">def</span> __init__(self, d, n_heads, n_kv_heads, d_head):
+        super().__init__()
+        self.h, self.h_kv, self.dh = n_heads, n_kv_heads, d_head
+        self.w_q = nn.Linear(d, n_heads     * d_head, bias=<span class="sh">False</span>)
+        self.w_k = nn.Linear(d, n_kv_heads  * d_head, bias=<span class="sh">False</span>)
+        self.w_v = nn.Linear(d, n_kv_heads  * d_head, bias=<span class="sh">False</span>)
+        self.w_o = nn.Linear(n_heads * d_head, d,     bias=<span class="sh">False</span>)
+    <span class="kw">def</span> forward(self, x, rope, mask):
+        B, L, _ = x.shape
+        q = self.w_q(x).view(B, L, self.h,    self.dh)
+        k = self.w_k(x).view(B, L, self.h_kv, self.dh)
+        v = self.w_v(x).view(B, L, self.h_kv, self.dh)
+        q, k = rope(q), rope(k)
+        <span class="cm"># GQA: repeat K, V to match number of Q heads</span>
+        k = k.repeat_interleave(self.h // self.h_kv, dim=2)
+        v = v.repeat_interleave(self.h // self.h_kv, dim=2)
+        q = q.transpose(1, 2)  <span class="cm"># (B, H, L, dh)</span>
+        k = k.transpose(1, 2); v = v.transpose(1, 2)
+        attn = F.scaled_dot_product_attention(q, k, v, attn_mask=mask, is_causal=mask <span class="kw">is</span> <span class="sh">None</span>)
+        <span class="kw">return</span> self.w_o(attn.transpose(1, 2).reshape(B, L, -1))
+
+<span class="kw">class</span> Block(nn.Module):
+    <span class="kw">def</span> __init__(self, d, n_h, n_kv, dh, d_ff):
+        super().__init__()
+        self.norm1 = RMSNorm(d)
+        self.attn  = GQAAttention(d, n_h, n_kv, dh)
+        self.norm2 = RMSNorm(d)
+        self.ffn   = SwiGLUFFN(d, d_ff)
+    <span class="kw">def</span> forward(self, x, rope, mask=<span class="sh">None</span>):
+        x = x + self.attn(self.norm1(x), rope, mask)   <span class="cm"># residual #1</span>
+        x = x + self.ffn(self.norm2(x))                <span class="cm"># residual #2</span>
+        <span class="kw">return</span> x</pre>
+
+    <p>Every line maps directly to the linear-algebra you've now seen: RMSNorm projects to a sphere, the four attention projections are matrix maps to/from head-spaces, the FFN is up-then-down with a SwiGLU gate, and the residual adds keep the block defaulting to identity.</p>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>Variants &mdash; Pre/Post Norm, GeLU/SwiGLU, Bias-Free</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Choice</th><th>Old</th><th>Modern (Llama-3 / Qwen / DeepSeek)</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr><td>Norm placement</td><td>Post-norm (Vaswani 2017)</td><td>Pre-norm</td><td>Trains stably to many more layers without warmup.</td></tr>
+                <tr><td>Norm type</td><td>LayerNorm (Ba 2016)</td><td>RMSNorm</td><td>One reduction, no centering, no bias &mdash; almost free win.</td></tr>
+                <tr><td>FFN activation</td><td>ReLU / GeLU</td><td>SwiGLU</td><td>Gated; better quality at same params (Shazeer 2020).</td></tr>
+                <tr><td>FFN ratio</td><td>$4d$ (GeLU)</td><td>$\frac{8}{3}d$ (SwiGLU, 3 matrices)</td><td>Keeps total FFN params constant despite extra matrix.</td></tr>
+                <tr><td>Position encoding</td><td>Sinusoidal / learned</td><td>RoPE</td><td>Relative position; better extrapolation; almost free.</td></tr>
+                <tr><td>Linear bias</td><td>$y = Wx + b$</td><td>$y = Wx$ (no bias)</td><td>Negligible quality cost; saves params; matches RMSNorm's bias-less style.</td></tr>
+                <tr><td>Attention</td><td>MHA (one K, V per head)</td><td>GQA (1 K/V per group of 8 heads) or MLA</td><td>KV cache size; long-context inference cost.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>What's stayed the same</h3>
+    <ul>
+        <li><strong>Pre-norm structure with two residuals per block.</strong> Every commercial LLM is this shape.</li>
+        <li><strong>Multi-head attention.</strong> Heads are still parallel rank-$d_h$ score matrices, summed back via $W_O$.</li>
+        <li><strong>FFN as up-then-down.</strong> Gating arrived; the up/down skeleton didn't change.</li>
+        <li><strong>Residual stream.</strong> The bus is the same; only the wires that feed into it have been swapped over the years.</li>
+    </ul>
+
+    <p>The transformer block has been remarkably stable since 2017: each component has had one or two refinements, but the topology hasn't changed. New architectures (Mamba, Hyena, RWKV) propose alternatives at the per-token level &mdash; but inside their blocks you still find a residual stream, a normalisation, two sub-layers and a residual add. The skeleton is genuinely the right one.</p>
+</section>
+
+<section class="slide" id="slide-10">
+    <div class="slide-number">10</div>
+    <h2>Cheat Sheet</h2>
+    <ul>
+        <li><strong>Pre-norm block:</strong> $\mathbf{x}'' = \mathbf{x} + \mathrm{MHA}(\mathrm{Norm}(\mathbf{x})) + \mathrm{FFN}(\mathrm{Norm}(\mathbf{x} + \mathrm{MHA}(\mathrm{Norm}(\mathbf{x}))))$. Two sub-layers, two residuals.</li>
+        <li>The <strong>residual stream</strong> is a linear bus through every block: each sub-layer reads via norm, writes via residual add. Decomposability + gradient highway + shared coordinate system.</li>
+        <li><strong>RMSNorm</strong> projects each token to the sphere of radius $\sqrt{d}$ in feature space. LayerNorm adds zero-mean projection on top. RMSNorm is the modern default.</li>
+        <li><strong>Per-block params</strong> = $4d^2 + 3 d \cdot d_{ff} \approx 12 d^2$ at SwiGLU's $d_{ff} \approx 8d/3$. FFN is roughly twice attention.</li>
+        <li><strong>Per-token forward FLOPs</strong> ~$2N_{\text{block params}}$. Add $4dL$ for $L$-dependent attention scoring.</li>
+        <li>The "$6N$" training rule: one token costs ~$6N$ FLOPs to train, where $N$ is total params. Forward $2N$ + backward $4N$.</li>
+        <li>Modern Llama/Qwen/Mistral block: <strong>RMSNorm + GQA/MLA + RoPE + SwiGLU</strong>, all biases removed, pre-norm topology. The structure is standardised.</li>
+        <li>Attention is the cross-position bandwidth ($\sim 4 d^2$ params); FFN is the per-position memory ($\sim 8 d^2$ params). Roughly 1:2 ratio is preserved across model scales.</li>
+    </ul>
+
+    <div class="callout">
+        <div class="callout-label">Read next</div>
+        <p>Deck <strong>12 &mdash; Tensors, Einsum &amp; Modern Tricks</strong> takes the per-token block and scales it: batched / sharded / striped GEMMs, FlashAttention as block matmul, MoE as sparse projection, and the einsum view that makes parallelism strategies legible.</p>
+    </div>
+</section>
+
+<footer class="footer">
+    <p>Part of the <a href="https://github.com/BrendanJamesLynskey/LLM_Hub_Linear_Algebra">Linear Algebra for AI / ML</a> series. Sources: Vaswani et al. 2017; Ba, Kiros, Hinton, "Layer Normalization", arXiv:1607.06450 (2016); Zhang &amp; Sennrich, "Root Mean Square Layer Normalization", NeurIPS 2019; Xiong et al., "On Layer Normalization in the Transformer Architecture", ICML 2020; Touvron et al., "Llama 2", 2023; Hoffmann et al., "Training Compute-Optimal Large Language Models" (Chinchilla), NeurIPS 2022; Elhage et al., "A Mathematical Framework for Transformer Circuits", Anthropic 2021.</p>
+</footer>
+
+</body>
+</html>
