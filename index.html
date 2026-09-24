@@ -11,7 +11,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]})"></script>
     <style>
-        :root { --bg-primary: #0a0a0a; --bg-card: #0d1117; --bg-code: #161b22; --text-primary: #e6edf3; --text-secondary: #8b949e; --accent: #a78bfa; --accent-dim: #a78bfa44; --accent-glow: #a78bfa33; --accent-2: #f472b6; --accent-3: #fbbf24; --accent-4: #34d399; --border: #21262d; --font-display: 'Space Grotesk', sans-serif; --font-mono: 'JetBrains Mono', 'Fira Code', monospace; --font-body: 'Inter', sans-serif; --max-width: 920px; }
+        :root { --bg-primary: #222d29; --bg-card: #28342f; --bg-code: #2f3c37; --text-primary: #ecebe3; --text-secondary: #9caaa2; --accent: #c6b6e7; --accent-dim: #c6b6e744; --accent-glow: #c6b6e733; --accent-2: #e9a9c2; --accent-3: #f0e190; --accent-4: #a9dba2; --border: #3e4e48; --font-display: 'Space Grotesk', sans-serif; --font-mono: 'JetBrains Mono', 'Fira Code', monospace; --font-body: 'Inter', sans-serif; --max-width: 920px; }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
         body { background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-body); font-size: 17px; line-height: 1.7; overflow-x: hidden; }
@@ -42,7 +42,7 @@
         th { background: var(--bg-code); color: var(--accent); font-weight: 600; text-align: left; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-family: var(--font-display); white-space: nowrap; }
         td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); color: var(--text-secondary); vertical-align: top; }
         tr:last-child td { border-bottom: none; }
-        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        tr:nth-child(even) td { background: rgba(40,52,47,0.5); }
         .diagram-grid { display: grid; gap: 0.75rem; margin: 1.5rem 0; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
         .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
         .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
@@ -63,7 +63,7 @@
         .control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
         .control-row label { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary); min-width: 130px; }
         .btn { font-family: var(--font-mono); font-size: 0.8rem; padding: 0.4rem 0.9rem; background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; cursor: pointer; transition: background 0.15s ease; }
-        .btn:hover { background: rgba(167,139,250,0.25); }
+        .btn:hover { background: rgba(198,182,231,0.25); }
         .btn.secondary { background: var(--bg-code); color: var(--text-secondary); border-color: var(--border); }
         .control-row .val { font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); min-width: 80px; text-align: right; }
         .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.5rem; margin-top: 0.75rem; }
